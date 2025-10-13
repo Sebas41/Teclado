@@ -1,0 +1,22 @@
+{
+  "name": "keyboard-training-app",
+  "version": "1.0.0",
+  "description": "Aplicación para práctica de mecanografía",
+  "main": "script.js",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sebas41/Teclado.git"
+  },
+  "keywords": [
+    "keyboard",
+    "typing",
+    "practice",
+    "mecanografia"
+  ],
+  "author": "Tu Nombre",
+  "license": "MIT"
+}
