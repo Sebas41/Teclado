@@ -4,11 +4,17 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-    <link rel="stylesheet" href="/css/style.css" />
+    <title>Keyboard Training</title>
+
+    <!-- Hace que todas las rutas relativas se resuelvan bajo /keyboard/ -->
+    <base href="/keyboard/">
+
+    <!-- CSS relativo (se resolverá a /keyboard/css/style.css) -->
+    <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
     <h1 class="title">OJOS EN LA PANTALLA</h1>
+
     <div class="keyboard">
       <ul class="row row-0">
         <li class="pinky" id="ESC">ESC</li>
@@ -26,6 +32,7 @@
         <li class="pinky" id="=">=</li>
         <li class="pinky" id="BACKSPACE">BACKSPACE</li>
       </ul>
+
       <ul class="row row-1">
         <li class="pinky" id="TAB">TAB</li>
         <li class="pinky" id="Q">Q</li>
@@ -40,8 +47,10 @@
         <li class="pinky" id="P">P</li>
         <li class="pinky" id="[">[</li>
         <li class="pinky" id="]">]</li>
-        <li class="pinky barra" id="\">\</li>
+        <!-- Corregido: evita backslash en el atributo id -->
+        <li class="pinky barra" id="BACKSLASH">\</li>
       </ul>
+
       <ul class="row row-2">
         <li class="pinky" id="CAPSLOCK">CAPSLOCK</li>
         <li class="pinky" id="A">A</li>
@@ -56,6 +65,7 @@
         <li class="pinky" id=";">;</li>
         <li class="pinky" id="ENTER">ENTER</li>
       </ul>
+
       <ul class="row row-3">
         <li class="pinky" id="SHIFT">SHIFT</li>
         <li class="pinky" id="Z">Z</li>
@@ -71,7 +81,10 @@
         <li class="pinky" id="SHIFT">SHIFT</li>
       </ul>
     </div>
+
     <h1 class="title">MANOS EN EL TECLADO</h1>
-    <script src="/script.js"></script>
+
+    <!-- JS relativo (se resolverá a /keyboard/script.js) -->
+    <script src="script.js"></script>
   </body>
 </html>
