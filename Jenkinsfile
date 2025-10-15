@@ -67,23 +67,22 @@ pipeline {
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Empaqueta el contenido actual
-git archive --format=tar.gz -o teclado_site.tar.gz HEAD
+# Empaqueta el contenido del directorio dist
+cd dist
+tar czf ../teclado_site.tar.gz *
+cd ..
 
-# Asegura sshpass en el agente
+# Instala sshpass si no existe (sin sudo)
 if ! command -v sshpass >/dev/null 2>&1; then
-  echo "Instalando sshpass..."
-  if [ -f /etc/debian_version ]; then
-    sudo apt-get update && sudo apt-get install -y sshpass
-  else
-    echo "No se pudo instalar sshpass automáticamente. Instálalo manualmente." >&2
-    exit 1
-  fi
+  echo "ERROR: sshpass no está instalado en Jenkins"
+  echo "Por favor, instálalo en el contenedor de Jenkins"
+  exit 1
 fi
 
-# Copia al servidor remoto y despliega
+# Copia al servidor remoto
 sshpass -p "$SSH_PASS" scp -o StrictHostKeyChecking=no teclado_site.tar.gz "$SSH_USER@130.131.27.80:/tmp/teclado_site.tar.gz"
 
+# Despliega en el servidor remoto
 sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@130.131.27.80" <<'REMOTE'
   set -euxo pipefail
   DEPLOY_PATH="/var/www/keyboard-app"
@@ -92,6 +91,7 @@ sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@130.131.27.80"
   sudo tar xzf /tmp/teclado_site.tar.gz -C $DEPLOY_PATH
   sudo chown -R www-data:www-data $DEPLOY_PATH
   sudo systemctl reload nginx
+  rm -f /tmp/teclado_site.tar.gz
 REMOTE
 
 rm -f teclado_site.tar.gz
