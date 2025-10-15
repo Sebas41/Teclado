@@ -40,7 +40,7 @@ pipeline {
             echo 'Preparando archivos para despliegue...'
             sh '''
                 #!/bin/bash
-                set -euxo pipefail
+                set -eux
                 mkdir -p dist
                 cp index.html dist/
                 cp script.js dist/
