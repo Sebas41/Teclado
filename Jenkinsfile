@@ -36,16 +36,17 @@ pipeline {
     }
 
     stage('Build static files') {
-      steps {
-        echo "Preparando archivos para despliegue..."
-        sh '''
-          set -euxo pipefail
-          rm -rf dist && mkdir -p dist
-          cp -v index.html dist/
-          [ -f script.js ] && cp -v script.js dist/
-          [ -d css ] && cp -rv css dist/
-        '''
-      }
+        steps {
+            echo 'Preparando archivos para despliegue...'
+            sh '''
+                #!/bin/bash
+                set -euxo pipefail
+                mkdir -p dist
+                cp index.html dist/
+                cp script.js dist/
+                cp -r css dist/
+            '''
+        }
     }
 
     stage('Deploy to nginx (via SSH password)') {
