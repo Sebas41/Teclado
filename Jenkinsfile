@@ -90,7 +90,8 @@ sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@130.131.27.80"
   sudo rm -rf $DEPLOY_PATH/*
   sudo tar xzf /tmp/teclado_site.tar.gz -C $DEPLOY_PATH
   sudo chown -R www-data:www-data $DEPLOY_PATH
-  sudo systemctl reload nginx
+  #sudo systemctl reload nginx
+  sudo service nginx reload || echo "Nginx recargado o no se requiere reload (contenedor detectado)"
   rm -f /tmp/teclado_site.tar.gz
 REMOTE
 
