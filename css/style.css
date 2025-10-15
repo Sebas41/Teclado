@@ -64,8 +64,8 @@ li {
   width: 5em;
 }
 .pinky {
-  background-color: crimson;
-  border: 2px solid crimson;
+  background-color: springgreen;
+  border: 2px solid springgreen;
 }
 
 .pinky.selected {
