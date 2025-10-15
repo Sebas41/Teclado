@@ -50,7 +50,13 @@ pipeline {
     }
 
     stage('Deploy to nginx (via SSH password)') {
-      when { branch 'main' }
+      when {
+        anyOf {
+            branch 'main'
+            expression { env.GIT_BRANCH == 'origin/main' }
+            expression { env.GIT_BRANCH == 'main' }
+        }
+      }
       steps {
         echo "Desplegando en servidor Nginx (${env.SONAR_HOST_URL})..."
         script {
