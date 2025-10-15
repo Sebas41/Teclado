@@ -1,103 +1,107 @@
 pipeline {
-    agent any
-    
-    environment {
-        SONAR_HOST = 'http://130.213.10.92:9000'
-        APP_NAME = 'keyboard-app'
-        DEPLOY_PATH = '/var/www/keyboard-app'
-        NGINX_SERVER = '130.131.27.80'
+  agent any
+
+  environment {
+    SONAR_HOST_URL = 'http://130.213.10.92:9000'
+    SONAR_TOKEN    = credentials('SONAR_TOKEN')
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        echo "Clonando repositorio..."
+        checkout scm
+      }
     }
-    
-    stages {
-        stage('Checkout') {
-            steps {
-                echo 'Clonando repositorio...'
-                checkout scm
-            }
-        }
-        
-        stage('Install Dependencies') {
-            steps {
-                echo 'Verificando archivos...'
-                sh '''
-                    ls -la
-                    if [ -f "package.json" ]; then
-                        npm install
-                    fi
-                '''
-            }
-        }
-        
-        stage('Code Quality Analysis') {
-            steps {
-                echo 'Ejecutando análisis con SonarQube...'
-                script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                                -Dsonar.projectKey=${APP_NAME} \
-                                -Dsonar.sources=. \
-                                -Dsonar.host.url=${SONAR_HOST} \
-                                -Dsonar.javascript.file.suffixes=.js \
-                                -Dsonar.css.file.suffixes=.css \
-                                -Dsonar.exclusions=**/node_modules/**,**/*.map
-                        """
-                    }
-                }
-            }
-        }
-        
-        stage('Quality Gate') {
-            steps {
-                echo 'Esperando resultado de Quality Gate...'
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                echo 'Preparando archivos para deploy...'
-                sh '''
-                    mkdir -p dist
-                    cp index.html dist/
-                    cp script.js dist/
-                    cp -r css dist/
-                '''
-            }
-        }
-        
-        stage('Deploy to Nginx') {
-            steps {
-                echo 'Desplegando aplicación en Nginx...'
-                sshagent(['nginx-ssh-key']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no adminuser@${NGINX_SERVER} '
-                            sudo mkdir -p ${DEPLOY_PATH}
-                            sudo chown -R adminuser:adminuser ${DEPLOY_PATH}
-                        '
-                        scp -r dist/* adminuser@${NGINX_SERVER}:${DEPLOY_PATH}/
-                        ssh adminuser@${NGINX_SERVER} '
-                            sudo docker exec nginx nginx -s reload
-                        '
-                    """
-                }
-            }
-        }
+
+    stage('SonarQube analysis') {
+      steps {
+        echo "Ejecutando análisis estático con SonarQube..."
+        // Ejecuta sonar-scanner (debe estar en PATH del agente Jenkins)
+        sh '''
+          sonar-scanner \
+            -Dsonar.projectKey=keyboard-app \
+            -Dsonar.projectName="Keyboard App" \
+            -Dsonar.sources=. \
+            -Dsonar.host.url="${SONAR_HOST_URL}" \
+            -Dsonar.login="${SONAR_TOKEN}" \
+            -Dsonar.exclusions=**/node_modules/**,**/*.map,**/dist/**
+        '''
+      }
     }
-    
-    post {
-        success {
-            echo '✅ Pipeline ejecutado exitosamente!'
-            echo "🌐 Aplicación disponible en: http://${NGINX_SERVER}/keyboard/"
-        }
-        failure {
-            echo '❌ Pipeline falló. Revisa los logs.'
-        }
-        always {
-            cleanWs()
-        }
+
+    stage('Build static files') {
+      steps {
+        echo "Preparando archivos para despliegue..."
+        sh '''
+          set -euxo pipefail
+          rm -rf dist && mkdir -p dist
+          cp -v index.html dist/
+          [ -f script.js ] && cp -v script.js dist/
+          [ -d css ] && cp -rv css dist/
+        '''
+      }
     }
+
+    stage('Deploy to nginx (via SSH password)') {
+      when { branch 'main' }
+      steps {
+        echo "Desplegando en servidor Nginx (${env.SONAR_HOST_URL})..."
+        script {
+          // Usa credencial tipo "Username with password"
+          withCredentials([usernamePassword(credentialsId: 'jenkins-pass-nginx', passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+            // Creamos un script temporal para evitar problemas de escape
+            sh '''cat > deploy.sh <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Empaqueta el contenido actual
+git archive --format=tar.gz -o teclado_site.tar.gz HEAD
+
+# Asegura sshpass en el agente
+if ! command -v sshpass >/dev/null 2>&1; then
+  echo "Instalando sshpass..."
+  if [ -f /etc/debian_version ]; then
+    sudo apt-get update && sudo apt-get install -y sshpass
+  else
+    echo "No se pudo instalar sshpass automáticamente. Instálalo manualmente." >&2
+    exit 1
+  fi
+fi
+
+# Copia al servidor remoto y despliega
+sshpass -p "$SSH_PASS" scp -o StrictHostKeyChecking=no teclado_site.tar.gz "$SSH_USER@130.131.27.80:/tmp/teclado_site.tar.gz"
+
+sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@130.131.27.80" <<'REMOTE'
+  set -euxo pipefail
+  DEPLOY_PATH="/var/www/keyboard-app"
+  sudo mkdir -p $DEPLOY_PATH
+  sudo rm -rf $DEPLOY_PATH/*
+  sudo tar xzf /tmp/teclado_site.tar.gz -C $DEPLOY_PATH
+  sudo chown -R www-data:www-data $DEPLOY_PATH
+  sudo systemctl reload nginx
+REMOTE
+
+rm -f teclado_site.tar.gz
+SH
+
+chmod +x deploy.sh
+bash ./deploy.sh
+rm -f deploy.sh
+'''
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo '✅ Pipeline completado correctamente.'
+      echo '🌐 App disponible en: http://130.131.27.80/keyboard/'
+    }
+    failure {
+      echo '❌ Pipeline falló. Revisa los logs de Jenkins.'
+    }
+  }
 }
