@@ -18,15 +18,20 @@ pipeline {
       steps {
         echo "Ejecutando análisis estático con SonarQube..."
         // Ejecuta sonar-scanner (debe estar en PATH del agente Jenkins)
-        sh '''
-          sonar-scanner \
-            -Dsonar.projectKey=keyboard-app \
-            -Dsonar.projectName="Keyboard App" \
-            -Dsonar.sources=. \
-            -Dsonar.host.url="${SONAR_HOST_URL}" \
-            -Dsonar.login="${SONAR_TOKEN}" \
-            -Dsonar.exclusions=**/node_modules/**,**/*.map,**/dist/**
-        '''
+        script {
+            def scannerHome = tool 'SonarScanner'
+            withSonarQubeEnv('SonarQube') {
+                sh """
+                ${scannerHome}/bin/sonar-scanner \
+                    -Dsonar.projectKey=keyboard-app \
+                    -Dsonar.projectName="Keyboard App" \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=${SONAR_HOST_URL} \
+                    -Dsonar.login=${SONAR_TOKEN} \
+                    -Dsonar.exclusions=**/node_modules/**,**/*.map,**/dist/**
+                """
+            }
+        }
       }
     }
 
